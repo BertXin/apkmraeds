@@ -116,31 +116,32 @@
         }
         .actions {
             display: flex;
-            gap: 12px;
+            gap: 8px;
         }
-        .actions a {
-            padding: 6px 12px;
+        .actions a, .actions span {
+            padding: 8px 16px;
             border-radius: 6px;
             font-size: 13px;
             text-decoration: none;
+            cursor: pointer;
             transition: all 0.2s;
         }
+        .actions .copy-btn {
+            background: #f0f4ff;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+        .actions .copy-btn:hover { background: #667eea; color: white; }
         .actions .download-btn {
             background: #667eea;
             color: white;
         }
         .actions .download-btn:hover { background: #5a6fd6; }
         .actions .delete-btn {
-            background: #ffebee;
-            color: #e53935;
+            background: #e53935;
+            color: white;
         }
-        .actions .delete-btn:hover { background: #e53935; color: white; }
-        .actions .copy-btn {
-            background: #f0f4ff;
-            color: #667eea;
-            cursor: pointer;
-        }
-        .actions .copy-btn:hover { background: #667eea; color: white; }
+        .actions .delete-btn:hover { background: #c62828; }
         .loading { text-align: center; padding: 24px; color: #888; }
         .error-msg {
             text-align: center;
@@ -149,7 +150,8 @@
             background: #ffebee;
             border-radius: 8px;
         }
-        .copy-toast {
+        /* 复制成功提示 */
+        .toast {
             position: fixed;
             bottom: 20px;
             left: 50%;
@@ -159,13 +161,11 @@
             padding: 12px 24px;
             border-radius: 8px;
             font-size: 14px;
-            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1001;
         }
-        .copy-toast.show { display: block; animation: toastIn 0.3s ease; }
-        @keyframes toastIn {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
+        .toast.show { opacity: 1; }
         /* 确认删除弹窗 */
         .modal {
             display: none;
@@ -196,9 +196,12 @@
             border-radius: 8px;
             font-size: 14px;
             cursor: pointer;
+            transition: all 0.2s;
         }
         .modal-btn.danger { background: #e53935; color: white; border: none; }
-        .modal-btn.cancel { background: white; color: #333; border: 1px solid #ddd; }
+        .modal-btn.danger:hover { background: #c62828; }
+        .modal-btn.cancel { background: #f5f5f5; color: #333; border: none; }
+        .modal-btn.cancel:hover { background: #e0e0e0; }
     </style>
 </head>
 <body>
@@ -224,7 +227,8 @@
         </div>
     </div>
 
-    <div class="copy-toast" id="copyToast">链接已复制</div>
+    <!-- 复制成功提示 -->
+    <div class="toast" id="toast">链接已复制</div>
 
     <!-- 删除确认弹窗 -->
     <div class="modal" id="deleteModal">
@@ -253,6 +257,46 @@
             if (!dateStr) return '-';
             const d = new Date(dateStr);
             return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function copyLink(url) {
+            // 使用传统方法复制，兼容性更好
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            try {
+                const success = document.execCommand('copy');
+                if (success) {
+                    showToast('链接已复制');
+                } else {
+                    // 如果 execCommand 失败，尝试 clipboard API
+                    navigator.clipboard.writeText(url).then(() => {
+                        showToast('链接已复制');
+                    }).catch(() => {
+                        showToast('复制失败，请手动复制');
+                    });
+                }
+            } catch (e) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('链接已复制');
+                }).catch(() => {
+                    showToast('复制失败，请手动复制');
+                });
+            }
+
+            document.body.removeChild(textarea);
         }
 
         async function loadFiles() {
@@ -318,21 +362,6 @@
             } catch (err) {
                 content.innerHTML = `<div class="error-msg">网络错误: ${err.message}</div>`;
             }
-        }
-
-        function copyLink(url) {
-            navigator.clipboard.writeText(url).then(() => {
-                const toast = document.getElementById('copyToast');
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            }).catch(() => {
-                const textarea = document.createElement('textarea');
-                textarea.value = url;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-            });
         }
 
         function showDeleteModal(id) {
