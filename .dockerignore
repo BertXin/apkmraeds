@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.git
+.gitignore
+.idea
+.vscode
+*.md
+.env.example
+uploads/*
+!uploads/.gitkeep
+*.db
+*.sqlite

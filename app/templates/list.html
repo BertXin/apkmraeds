@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APK 文件列表</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .nav-links {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: #f0f4ff;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        .nav-links a.active {
+            background: #667eea;
+            color: white;
+        }
+        .auth-section {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .auth-section input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .auth-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .auth-section button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #888;
+        }
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            fill: #ddd;
+            margin-bottom: 16px;
+        }
+        .file-table { width: 100%; border-collapse: collapse; }
+        .file-table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .file-table td {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-table tr:hover { background: #fafafa; }
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-size { color: #888; font-size: 14px; }
+        .file-time { color: #888; font-size: 13px; }
+        .download-count {
+            color: #667eea;
+            font-weight: 500;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .actions a {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .actions .download-btn {
+            background: #667eea;
+            color: white;
+        }
+        .actions .download-btn:hover { background: #5a6fd6; }
+        .actions .delete-btn {
+            background: #ffebee;
+            color: #e53935;
+        }
+        .actions .delete-btn:hover { background: #e53935; color: white; }
+        .actions .copy-btn {
+            background: #f0f4ff;
+            color: #667eea;
+            cursor: pointer;
+        }
+        .actions .copy-btn:hover { background: #667eea; color: white; }
+        .loading { text-align: center; padding: 24px; color: #888; }
+        .error-msg {
+            text-align: center;
+            padding: 24px;
+            color: #e53935;
+            background: #ffebee;
+            border-radius: 8px;
+        }
+        .copy-toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .copy-toast.show { display: block; animation: toastIn 0.3s ease; }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        /* 确认删除弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 320px;
+            text-align: center;
+        }
+        .modal h3 { margin-bottom: 12px; color: #333; }
+        .modal p { color: #666; margin-bottom: 20px; }
+        .modal-btns { display: flex; gap: 12px; }
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .modal-btn.danger { background: #e53935; color: white; border: none; }
+        .modal-btn.cancel { background: white; color: #333; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>APK 文件列表</h1>
+        </div>
+        <div class="card">
+            <div class="nav-links">
+                <a href="/">上传文件</a>
+                <a href="/list" class="active">文件列表</a>
+            </div>
+            <div class="auth-section">
+                <input type="password" id="tokenInput" placeholder="输入 Token 查看列表">
+                <button onclick="loadFiles()">加载</button>
+            </div>
+            <div id="content">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                    <p>请输入 Token 加载文件列表</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-toast" id="copyToast">链接已复制</div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <h3>确认删除</h3>
+            <p>删除后无法恢复，确定要删除吗？</p>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeDeleteModal()">取消</button>
+                <button class="modal-btn danger" id="confirmDelete">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = '';
+        let deleteTargetId = null;
+
+        function formatSize(bytes) {
+            if (!bytes) return '0 B';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        }
+
+        function formatTime(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function loadFiles() {
+            token = document.getElementById('tokenInput').value;
+            if (!token) {
+                alert('请输入 Token');
+                return;
+            }
+
+            const content = document.getElementById('content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const res = await fetch('/api/files', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (!res.ok) {
+                    const data = await res.json();
+                    content.innerHTML = `<div class="error-msg">${data.detail || '加载失败'}</div>`;
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (data.files.length === 0) {
+                    content.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg>
+                            <p>暂无上传文件</p>
+                        </div>`;
+                    return;
+                }
+
+                let html = `<table class="file-table">
+                    <thead>
+                        <tr>
+                            <th>文件名</th>
+                            <th>大小</th>
+                            <th>上传时间</th>
+                            <th>下载次数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                data.files.forEach(f => {
+                    html += `<tr>
+                        <td class="file-name">${f.filename}</td>
+                        <td class="file-size">${formatSize(f.size)}</td>
+                        <td class="file-time">${formatTime(f.upload_time)}</td>
+                        <td class="download-count">${f.download_count || 0}</td>
+                        <td class="actions">
+                            <span class="copy-btn" onclick="copyLink('${f.download_url}')">复制</span>
+                            <a class="download-btn" href="${f.download_url}" target="_blank">下载</a>
+                            <span class="delete-btn" onclick="showDeleteModal('${f.id}')">删除</span>
+                        </td>
+                    </tr>`;
+                });
+
+                html += '</tbody></table>';
+                content.innerHTML = html;
+            } catch (err) {
+                content.innerHTML = `<div class="error-msg">网络错误: ${err.message}</div>`;
+            }
+        }
+
+        function copyLink(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                const toast = document.getElementById('copyToast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            });
+        }
+
+        function showDeleteModal(id) {
+            deleteTargetId = id;
+            document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function closeDeleteModal() {
+            deleteTargetId = null;
+            document.getElementById('deleteModal').classList.remove('show');
+        }
+
+        document.getElementById('confirmDelete').addEventListener('click', async () => {
+            if (!deleteTargetId) return;
+
+            try {
+                const res = await fetch(`/api/files/${deleteTargetId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+
+                if (res.ok) {
+                    closeDeleteModal();
+                    loadFiles();
+                } else {
+                    const data = await res.json();
+                    alert('删除失败: ' + (data.detail || '未知错误'));
+                }
+            } catch (err) {
+                alert('网络错误: ' + err.message);
+            }
+        });
+
+        document.getElementById('deleteModal').addEventListener('click', (e) => {
+            if (e.target.id === 'deleteModal') closeDeleteModal();
+        });
+    </script>
+</body>
+</html>
