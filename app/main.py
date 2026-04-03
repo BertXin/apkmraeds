@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import os
 
 from app.database import init_db
 from app.routers.upload import router as upload_router
@@ -22,20 +20,22 @@ init_db()
 app.include_router(upload_router)
 app.include_router(download_router)
 
-# 模板配置
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+# 模板配置 - 使用绝对路径
+import os
+TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """上传页面"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 @app.get("/list", response_class=HTMLResponse)
 async def file_list(request: Request):
     """文件列表页面"""
-    return templates.TemplateResponse("list.html", {"request": request})
+    return templates.TemplateResponse(request, "list.html")
 
 
 @app.get("/health")
