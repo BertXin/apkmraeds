@@ -142,6 +142,11 @@
             color: white;
         }
         .actions .delete-btn:hover { background: #c62828; }
+        .actions .replace-btn {
+            background: #ff9800;
+            color: white;
+        }
+        .actions .replace-btn:hover { background: #f57c00; }
         .loading { text-align: center; padding: 24px; color: #888; }
         .error-msg {
             text-align: center;
@@ -227,6 +232,9 @@
         </div>
     </div>
 
+    <!-- 隐藏的文件选择器 -->
+    <input type="file" id="replaceInput" accept=".apk" style="display:none">
+
     <!-- 复制成功提示 -->
     <div class="toast" id="toast">链接已复制</div>
 
@@ -299,6 +307,45 @@
             document.body.removeChild(textarea);
         }
 
+        let replaceTargetId = null;
+
+        function replaceFile(fileId) {
+            replaceTargetId = fileId;
+            const input = document.getElementById('replaceInput');
+            input.value = '';
+            input.click();
+        }
+
+        document.getElementById('replaceInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file || !replaceTargetId) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showToast('正在替换...');
+
+            try {
+                const res = await fetch(`/api/files/${replaceTargetId}/replace`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData,
+                });
+
+                if (res.ok) {
+                    showToast('替换成功，下载链接不变');
+                    loadFiles();
+                } else {
+                    const data = await res.json();
+                    showToast('替换失败: ' + (data.detail || '未知错误'));
+                }
+            } catch (err) {
+                showToast('网络错误: ' + err.message);
+            }
+
+            replaceTargetId = null;
+        });
+
         async function loadFiles() {
             token = document.getElementById('tokenInput').value;
             if (!token) {
@@ -352,6 +399,7 @@
                         <td class="actions">
                             <span class="copy-btn" onclick="copyLink('${f.download_url}')">复制</span>
                             <a class="download-btn" href="${f.download_url}" target="_blank">下载</a>
+                            <span class="replace-btn" onclick="replaceFile('${f.id}')">替换</span>
                             <span class="delete-btn" onclick="showDeleteModal('${f.id}')">删除</span>
                         </td>
                     </tr>`;

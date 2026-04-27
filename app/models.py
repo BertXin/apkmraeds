@@ -30,3 +30,11 @@ class FileListResponse(BaseModel):
 class DeleteResponse(BaseModel):
     message: str
     id: str
+
+
+class ReplaceResponse(BaseModel):
+    id: str
+    filename: str
+    size: int
+    download_url: str
+    message: str

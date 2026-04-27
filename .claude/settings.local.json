@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_claude-mem_mcp-search__smart_outline",
+      "Read(//Users/mobpowertech/work/github.com/pyproject/pyproject/**)",
+      "Bash(.venv/bin/python -c \"import starlette; print\\(starlette.__version__\\)\")",
+      "Bash(.venv/bin/python -c ':*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

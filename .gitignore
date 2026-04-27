@@ -1,57 +1,6 @@
-# APK 分发服务
-
-开发人员上传 APK 到服务器，生成自定义域名下载链接供测试人员下载。
-
-## 功能
-
-- 上传 APK 到 AWS S3
-- 生成自定义域名下载链接
-- Web 界面上传和管理文件
-- 简单 Token 认证
-- 支持断点续传
-
-## 快速开始
-
-1. 安装依赖
-```bash
-pip install -r requirements.txt
-```
-
-2. 配置环境变量
-```bash
-cp .env.example .env
-# 编辑 .env 填入实际配置
-```
-
-3. 启动服务
-```bash
-uvicorn app.main:app --reload
-```
-
-4. 访问 http://localhost:8000 使用 Web 界面
-
-## API 接口
-
-### 上传 APK
-```bash
-curl -X POST "http://localhost:8000/api/upload" \
-  -H "Authorization: Bearer your-token" \
-  -F "file=@app.apk"
-```
-
-### 下载 APK
-直接访问返回的下载链接即可
-
-### 文件列表
-```bash
-curl -H "Authorization: Bearer your-token" \
-  http://localhost:8000/api/files
-```
-
-### 删除文件
-```bash
-curl -X DELETE -H "Authorization: Bearer your-token" \
-  http://localhost:8000/api/files/{file_id}
-```
 .env
 .env.example
+.idea/
+data/*.db
+__pycache__/
+*.pyc

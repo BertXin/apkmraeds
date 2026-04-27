@@ -29,13 +29,13 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """上传页面"""
-    return templates.TemplateResponse(request, "index.html")
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/list", response_class=HTMLResponse)
 async def file_list(request: Request):
     """文件列表页面"""
-    return templates.TemplateResponse(request, "list.html")
+    return templates.TemplateResponse("list.html", {"request": request})
 
 
 @app.get("/health")

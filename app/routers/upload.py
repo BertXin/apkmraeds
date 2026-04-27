@@ -1,5 +1,6 @@
 import os
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ import zipfile
 import io
 
 from app.database import get_db, APKFile
-from app.models import UploadResponse, FileListResponse, FileInfo, DeleteResponse
+from app.models import UploadResponse, FileListResponse, FileInfo, DeleteResponse, ReplaceResponse
 from app.s3 import s3_client
 from app.config import settings
 
@@ -56,17 +57,42 @@ async def upload_apk(
     if file_size > settings.MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size exceeds limit")
 
-    # 生成 S3 key
-    file_id = str(uuid.uuid4())
-    s3_key = f"apk/{file_id}/{file.filename}"
-
     # 提取版本信息
     version_name, version_code = extract_apk_version(content)
 
-    # 上传到 S3
+    # 检查是否已有同名文件，有则覆盖
+    existing = db.query(APKFile).filter(APKFile.filename == file.filename).first()
+
+    if existing:
+        # 删除旧 S3 文件
+        await s3_client.delete_file(existing.s3_key)
+
+        # 上传新文件到 S3（保持同一个 file_id）
+        new_s3_key = f"apk/{existing.id}/{file.filename}"
+        await s3_client.upload_file(content, new_s3_key)
+
+        # 更新数据库记录
+        existing.s3_key = new_s3_key
+        existing.size = file_size
+        existing.version_name = version_name
+        existing.version_code = version_code
+        existing.upload_time = datetime.utcnow()
+        db.commit()
+
+        return UploadResponse(
+            id=existing.id,
+            filename=file.filename,
+            size=file_size,
+            download_url=f"{settings.BASE_URL}/download/{existing.id}",
+            message="File replaced",
+        )
+
+    # 新文件
+    file_id = str(uuid.uuid4())
+    s3_key = f"apk/{file_id}/{file.filename}"
+
     await s3_client.upload_file(content, s3_key)
 
-    # 保存到数据库
     apk_file = APKFile(
         id=file_id,
         filename=file.filename,
@@ -119,3 +145,52 @@ async def delete_file(
     db.commit()
 
     return DeleteResponse(message="File deleted", id=file_id)
+
+
+@router.put("/files/{file_id}/replace", response_model=ReplaceResponse)
+async def replace_file(
+    file_id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: str = Depends(verify_token),
+):
+    """替换已有文件，保持下载链接不变"""
+    apk_file = db.query(APKFile).filter(APKFile.id == file_id).first()
+    if not apk_file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if not file.filename or not file.filename.lower().endswith(".apk"):
+        raise HTTPException(status_code=400, detail="Only APK files are allowed")
+
+    content = await file.read()
+    file_size = len(content)
+
+    if file_size > settings.MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File size exceeds limit")
+
+    # 删除旧 S3 文件
+    await s3_client.delete_file(apk_file.s3_key)
+
+    # 上传新文件到 S3（保持同一个 file_id）
+    new_s3_key = f"apk/{file_id}/{file.filename}"
+    await s3_client.upload_file(content, new_s3_key)
+
+    # 提取版本信息
+    version_name, version_code = extract_apk_version(content)
+
+    # 更新数据库记录
+    apk_file.filename = file.filename
+    apk_file.s3_key = new_s3_key
+    apk_file.size = file_size
+    apk_file.version_name = version_name
+    apk_file.version_code = version_code
+    apk_file.upload_time = datetime.utcnow()
+    db.commit()
+
+    return ReplaceResponse(
+        id=file_id,
+        filename=file.filename,
+        size=file_size,
+        download_url=f"{settings.BASE_URL}/download/{file_id}",
+        message="File replaced successfully",
+    )
