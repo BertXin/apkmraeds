@@ -1,6 +1,7 @@
 .env
 .env.example
 .idea/
+.claude/
 data/*.db
 __pycache__/
 *.pyc
