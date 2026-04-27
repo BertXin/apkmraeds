@@ -12,7 +12,7 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .header {
             text-align: center;
             margin-bottom: 24px;
@@ -108,8 +108,8 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .file-size { color: #888; font-size: 14px; }
-        .file-time { color: #888; font-size: 13px; }
+        .file-size { color: #888; font-size: 14px; white-space: nowrap; }
+        .file-time { color: #888; font-size: 13px; white-space: nowrap; }
         .download-count {
             color: #667eea;
             font-weight: 500;
@@ -117,14 +117,16 @@
         .actions {
             display: flex;
             gap: 8px;
+            flex-wrap: nowrap;
         }
         .actions a, .actions span {
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 6px;
-            font-size: 13px;
+            font-size: 12px;
             text-decoration: none;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
         }
         .actions .copy-btn {
             background: #f0f4ff;
@@ -263,8 +265,8 @@
 
         function formatTime(dateStr) {
             if (!dateStr) return '-';
-            const d = new Date(dateStr);
-            return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const d = new Date(dateStr + 'Z');
+            return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
         }
 
         function showToast(msg) {
